@@ -3,7 +3,9 @@ name = "pipeline"
 version = "0.1.0"
 edition = "2024"
 repository = "https://github.com/tevarindol/pipeline"
-license = "MIT OR Apache-2.0"
+license = "GPL-3.0-or-later"
 description = ""
 
 [dependencies]
+ipc-channel = { version = "0.23.1", features = ["async"] }
+tokio = { version = "1.54.1", features = ["full"] }
