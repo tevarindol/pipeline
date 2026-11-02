@@ -1,0 +1,13 @@
+import { ScrollView, VerticalBox } from "std-widgets.slint";
+export component App inherits Window {
+    title: "Object3";
+    width: 500px;
+    height: 400px;
+    in-out property <string> values: "Очікування даних від Lab6...";
+    VerticalBox {
+        padding: 12px;
+        spacing: 8px;
+        Text { text: "Відсортований вектор:"; }
+        ScrollView { Text { text: root.values; font-family: "monospace"; } }
+    }
+}

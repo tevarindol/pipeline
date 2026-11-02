@@ -1,0 +1,45 @@
+import { Button, LineEdit, VerticalBox, HorizontalBox } from "std-widgets.slint";
+
+export component App inherits Window {
+    title: "Lab6";
+    width: 420px;
+    height: 180px;
+    in-out property <string> status: "Оберіть завдання, щоб почати.";
+    in-out property <bool> busy: false;
+    callback open-parameters();
+    MenuBar {
+        Menu {
+            title: "Завдання";
+            MenuItem {
+                title: "Сформувати та відсортувати вектор";
+                enabled: !root.busy;
+                activated => { root.open-parameters(); }
+            }
+        }
+    }
+    VerticalBox {
+        padding: 16px;
+        spacing: 12px;
+        Button {
+            text: "Відкрити завдання";
+            enabled: !root.busy;
+            clicked => { root.open-parameters(); }
+        }
+        Text { text: root.status; wrap: word-wrap; }
+    }
+}
+
+export component Parameters inherits Window {
+    title: "Параметри вектора";
+    width: 350px;
+    height: 250px;
+    callback execute(string, string, string);
+    VerticalBox {
+        padding: 16px;
+        spacing: 8px;
+        HorizontalBox { Text { text: "Кількість (n):"; width: 120px; } n-input := LineEdit { text: "20"; } }
+        HorizontalBox { Text { text: "Мінімум:"; width: 120px; } min-input := LineEdit { text: "-10"; } }
+        HorizontalBox { Text { text: "Максимум:"; width: 120px; } max-input := LineEdit { text: "10"; } }
+        Button { text: "Виконати"; clicked => { root.execute(n-input.text, min-input.text, max-input.text); } }
+    }
+}

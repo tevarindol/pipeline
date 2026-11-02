@@ -1,0 +1,15 @@
+[package]
+name = "lab6"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+build = "build.rs"
+
+[dependencies]
+common.workspace = true
+anyhow.workspace = true
+slint.workspace = true
+tokio.workspace = true
+
+[build-dependencies]
+slint-build.workspace = true
