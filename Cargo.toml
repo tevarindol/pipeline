@@ -5,7 +5,12 @@ edition = "2024"
 repository = "https://github.com/tevarindol/pipeline"
 license = "GPL-3.0-or-later"
 description = ""
+build = "build.rs"
 
 [dependencies]
 ipc-channel = { version = "0.23.1", features = ["async"] }
+slint = "1.18.1"
 tokio = { version = "1.54.1", features = ["full"] }
+
+[build-dependencies]
+slint-build = "1.18.1"

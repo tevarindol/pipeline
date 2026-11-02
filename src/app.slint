@@ -1,0 +1,26 @@
+import { Button, VerticalBox } from "std-widgets.slint";
+
+export component App inherits Window {
+    width: 400px;
+    height: 300px;
+
+    in-out property <int> count: 0;
+
+    VerticalLayout {
+        alignment: center;
+        spacing: 20px;
+
+        Text {
+            text: "Clicked " + count + " times";
+            horizontal-alignment: center;
+        }
+
+        Button {
+            text: "Click me";
+
+            clicked => {
+                count += 1;
+            }
+        }
+    }
+}

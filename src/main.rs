@@ -2,12 +2,10 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use ipc_channel::ipc;
+slint::include_modules!();
 
-#[tokio::main]
-async fn main() {
-    let (tx, rx) = ipc::channel::<String>().unwrap();
-    tx.send(String::from("Hello, World!")).unwrap();
-    let message = rx.recv().unwrap();
-    println!("{}", message);
+fn main() -> Result<(), slint::PlatformError> {
+    let app = App::new()?;
+    
+    app.run()
 }
