@@ -9,7 +9,6 @@ build = "build.rs"
 common.workspace = true
 anyhow.workspace = true
 slint.workspace = true
-arboard = { version = "3", default-features = false }
 tokio.workspace = true
 
 [build-dependencies]

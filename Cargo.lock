@@ -754,6 +754,7 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "arboard",
  "interprocess",
  "serde",
  "serde_json",
@@ -3191,7 +3192,6 @@ name = "object2"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "arboard",
  "common",
  "rand",
  "slint",
@@ -3204,7 +3204,6 @@ name = "object3"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "arboard",
  "common",
  "slint",
  "slint-build",

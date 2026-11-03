@@ -1,41 +1,76 @@
 // SPDX-FileCopyrightText: 2026 Oleksandr Steblevets
 // SPDX-License-Identifier: GPL-3.0-only
 
-use anyhow::Result;
-use common::{Connection, OBJECT2, OBJECT3, Request, connect, send};
 use crate::App;
-use std::time::Duration;
-use tokio::process::Command;
-use tokio::sync::mpsc;
-use tokio::time::Instant;
+use anyhow::Result;
+use common::{
+    communicate::{self, Communicate},
+    packets::{MANAGER, OBJECT2, OBJECT3, Packet},
+};
+use std::{io, time::Duration};
+use tokio::{process::Command, sync::mpsc, time::Instant};
 
-async fn ensure_worker(name: &'static str) -> Result<Connection> {
-    match connect(name).await {
-        Ok(sender) => return Ok(sender),
-        Err(error) if matches!(error.kind(), std::io::ErrorKind::NotFound | std::io::ErrorKind::ConnectionRefused) => {},
-        Err(error) => return Err(error.into()),
-    }
-    let executable = std::env::current_exe()?
-        .with_file_name(format!("{name}{}", std::env::consts::EXE_SUFFIX));
-    let mut child = Command::new(&executable).spawn()?;
-    let deadline = Instant::now() + Duration::from_secs(10);
-    while Instant::now() < deadline {
-        if let Ok(sender) = connect(name).await {
-            return Ok(sender);
-        }
-        if child.try_wait()?.is_some() {
-            return Err(std::io::Error::from(std::io::ErrorKind::ConnectionAborted).into());
-        }
-        tokio::time::sleep(Duration::from_millis(100)).await;
-    }
-    let _ = child.kill().await;
-    Err(std::io::Error::from(std::io::ErrorKind::TimedOut).into())
+struct Manager {
+    communicate: Communicate,
+    next_id: u64,
 }
 
-async fn execute(n: usize, min: f64, max: f64) -> Result<()> {
-    send(ensure_worker(OBJECT2).await?, Request::Generate { n, min, max }).await?;
-    send(ensure_worker(OBJECT3).await?, Request::Sort).await?;
-    Ok(())
+impl Manager {
+    fn next_id(&mut self) -> u64 {
+        self.next_id += 1;
+        self.next_id
+    }
+
+    async fn wait_for(&mut self, expected: u64) -> Result<()> {
+        tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                if let Packet::Finished { id, success } = self.communicate.receive_packet().await? {
+                    if id == expected {
+                        return if success { Ok(()) } else { Err(io::Error::other("")) };
+                    }
+                }
+            }
+        }).await??;
+        Ok(())
+    }
+
+    async fn ensure_worker(&mut self, name: &'static str) -> Result<()> {
+        let id = self.next_id();
+        let ping = Packet::Ping { id };
+        match self.communicate.send_packet(name, &ping).await {
+            Ok(()) => return self.wait_for(id).await,
+            Err(error) if matches!(error.kind(), io::ErrorKind::NotFound | io::ErrorKind::ConnectionRefused) => {}
+            Err(error) => return Err(error.into()),
+        }
+
+        let executable = std::env::current_exe()?
+            .with_file_name(format!("{name}{}", std::env::consts::EXE_SUFFIX));
+        let mut child = Command::new(executable).spawn()?;
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while Instant::now() < deadline {
+            if self.communicate.send_packet(name, &ping).await.is_ok() {
+                return self.wait_for(id).await;
+            }
+            if child.try_wait()?.is_some() {
+                return Err(io::Error::from(io::ErrorKind::ConnectionAborted).into());
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+        let _ = child.kill().await;
+        Err(io::Error::from(io::ErrorKind::TimedOut).into())
+    }
+
+    async fn execute(&mut self, n: usize, min: f64, max: f64) -> Result<()> {
+        self.ensure_worker(OBJECT2).await?;
+        let id = self.next_id();
+        self.communicate.send_packet(OBJECT2, &Packet::Generate { id, n, min, max }).await?;
+        self.wait_for(id).await?;
+
+        self.ensure_worker(OBJECT3).await?;
+        let id = self.next_id();
+        self.communicate.send_packet(OBJECT3, &Packet::Sort { id }).await?;
+        self.wait_for(id).await
+    }
 }
 
 pub enum ManagerCommand {
@@ -44,10 +79,12 @@ pub enum ManagerCommand {
 }
 
 pub async fn run(mut commands: mpsc::UnboundedReceiver<ManagerCommand>, app: slint::Weak<App>) {
+    let Ok(communicate) = communicate::create(MANAGER) else { return };
+    let mut manager = Manager { communicate, next_id: 0 };
     while let Some(command) = commands.recv().await {
         match command {
             ManagerCommand::Execute { n, min, max } => {
-                let result = execute(n, min, max).await;
+                let result = manager.execute(n, min, max).await;
                 let _ = app.upgrade_in_event_loop(move |app| {
                     app.set_busy(false);
                     app.set_status(if result.is_ok() {
@@ -61,8 +98,6 @@ pub async fn run(mut commands: mpsc::UnboundedReceiver<ManagerCommand>, app: sli
         }
     }
     for name in [OBJECT2, OBJECT3] {
-        if let Ok(channel) = connect(name).await {
-            let _ = send(channel, Request::Shutdown).await;
-        }
+        let _ = manager.communicate.send_packet(name, &Packet::Shutdown).await;
     }
 }

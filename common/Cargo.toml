@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+arboard = { version = "3", default-features = false }
 serde.workspace = true
 anyhow.workspace = true
 interprocess.workspace = true
