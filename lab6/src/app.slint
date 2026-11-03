@@ -23,11 +23,6 @@ export component App inherits Window {
     VerticalBox {
         padding: 16px;
         spacing: 12px;
-        Button {
-            text: "Відкрити завдання";
-            enabled: !root.busy;
-            clicked => { root.open-parameters(); }
-        }
         Text { text: root.status; wrap: word-wrap; }
     }
 }
