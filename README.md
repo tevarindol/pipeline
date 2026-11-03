@@ -19,81 +19,44 @@ cargo build --workspace
 cargo run -p lab6
 ```
 
-## Діаграма програми
+## Схема послідовності надсилання та обробки повідомлень
+
+На схемі наведено успішне виконання; команди завершення надсилаються об’єктам, з якими вдалося з’єднатися.
 
 ```mermaid
-flowchart LR
-    subgraph lab6["lab6"]
-        lmain["fn main()"]
-        lui["fn ui::configure()"]
-        lrun["fn manager::run()"]
-        lapp["App<br/>status, busy<br/>open_parameters()"]
-        params["Parameters<br/>execute(n, min, max)"]
-        command["enum ManagerCommand<br/>Execute, Shutdown"]
-        manager["struct Manager<br/>communicate, next_id<br/>next_id(), wait_for()<br/>ensure_worker(), execute()"]
-        lmain --> lui
-        lmain --> lrun
-        lui -. "налаштовує" .-> lapp
-        lui -. "налаштовує" .-> params
-        lui -- "надсилає" --> command
-        command -- "mpsc" --> lrun
-        lrun --> manager
-        lrun -. "оновлює стан" .-> lapp
+sequenceDiagram
+    actor User as Користувач
+    participant Lab6
+    participant Object2
+    participant Clipboard as Буфер обміну
+    participant Object3
+
+    loop Виконання завдання, з можливістю повторення
+        User->>Lab6: Обирає завдання та вводить n, Min, Max
+        opt Object2 ще не запущено
+            Lab6->>Lab6: Запускає Object2
+        end
+        Lab6->>Object2: Ping (id)
+        Object2-->>Lab6: Finished (id, success)
+        Lab6->>Object2: Generate (id, n, Min, Max)
+        Object2->>Object2: Генерує вектор
+        Object2->>Clipboard: Записує вектор як текст
+        Object2->>Object2: Передає вектор для відображення
+        Object2-->>Lab6: Finished (id, success)
+
+        opt Object3 ще не запущено
+            Lab6->>Lab6: Запускає Object3
+        end
+        Lab6->>Object3: Ping (id)
+        Object3-->>Lab6: Finished (id, success)
+        Lab6->>Object3: Sort (id)
+        Object3->>Clipboard: Зчитує вектор
+        Clipboard-->>Object3: Текст із числами
+        Object3->>Object3: Сортує вектор і передає для відображення
+        Object3-->>Lab6: Finished (id, success)
     end
 
-    subgraph object2["object2"]
-        o2main["fn main()"]
-        o2configure["fn ui::configure()"]
-        o2run["fn worker::run()"]
-        o2show["fn ui::show_values()"]
-        o2quit["fn ui::quit()"]
-        o2app["App<br/>values"]
-        o2main --> o2configure
-        o2main --> o2run
-        o2run --> o2show
-        o2run --> o2quit
-        o2configure -. "налаштовує" .-> o2app
-        o2show -. "оновлює" .-> o2app
-    end
-
-    subgraph object3["object3"]
-        o3main["fn main()"]
-        o3configure["fn ui::configure()"]
-        o3run["fn worker::run()"]
-        o3show["fn ui::show_values()"]
-        o3quit["fn ui::quit()"]
-        o3app["App<br/>values"]
-        o3main --> o3configure
-        o3main --> o3run
-        o3run --> o3show
-        o3run --> o3quit
-        o3configure -. "налаштовує" .-> o3app
-        o3show -. "оновлює" .-> o3app
-    end
-
-    subgraph common["common"]
-        create["fn communicate::create()"]
-        validate["fn validate()"]
-        format["fn format_values()"]
-        communicate["struct Communicate<br/>send_packet()<br/>receive_packet()<br/>has_new_packets()"]
-        packet["enum Packet<br/>Ping, Generate, Sort<br/>Shutdown, Finished"]
-        clipboard["struct Clipboard<br/>write_vector()<br/>read_vector()"]
-        create --> communicate
-        communicate -. "передає" .-> packet
-    end
-
-    lui --> validate
-    lrun --> create
-    manager -- "містить" --> communicate
-    manager -. "формує та отримує" .-> packet
-    o2main --> create
-    o3main --> create
-    o2run --> communicate
-    o3run --> communicate
-    o2run -. "обробляє" .-> packet
-    o3run -. "обробляє" .-> packet
-    o2run -- "запис" --> clipboard
-    o3run -- "читання" --> clipboard
-    o2show --> format
-    o3show --> format
+    User->>Lab6: Закриває програму
+    Lab6->>Object2: Shutdown
+    Lab6->>Object3: Shutdown
 ```
